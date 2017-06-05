@@ -123,7 +123,9 @@ private:
 
     void clearTree(Node* root);
 
-    // storeTree
+    // store and read a tree
+    Node* readDataNodeWithoutData(const char * index_path, const Rid & rid);
+
     Node* readNode(const char * index_path, const Rid & rid);
 
     bool storeNode(const char * index_path, Node & node);
@@ -142,7 +144,7 @@ private:
 
     void readIndex(ifstream & in);
 
-    void readData(ifstream & in);
+    void readData(ifstream & in, int n);
 
     void storeIndexNode(const char* path, int offset, Node* node);
 
