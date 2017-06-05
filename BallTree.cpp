@@ -369,12 +369,26 @@ void BallTree::treeSearch(Query& query, Node* root) {
             //     treeSearch(query, each);
             // }
             
-            // 保证vchildren中Rid的顺序和vptr中Node*的顺序一致，即对应同一个Node
+            // 保证vchildren中Rid的顺序和vptr中Node*的顺序一致，即对应同一个Node.
+            // 利用vIndex记录得到排序后的vptr在原来root->getPtr()数组，
+            // 也即children数组的位置
             std::vector<Rid>& vchildren = root->getChildren();
-            std::vector<Node* >& vptr = root->getPtr();
-            for (int i = 0; i < vchildren.size(); i++) {
+            std::vector<Node* > vptr = root->getPtr();
+            sort(vptr.begin(), vptr.end(), [&](Node* a, Node* b) {
+                return getMIP(query, a) > getMIP(query, b);
+            });
+            std::vector<int> vIndex;
+            for (int i = 0; i < vptr.size(); i++) {
+            	for (int j = 0; j < vptr.size(); j++) {
+            		if (vptr[i] == root->getPtr()[j]) {
+            			vIndex.push_back(j);
+            			break;
+            		}
+            	}
+            }
+            for (int i = 0; i < vptr.size(); i++) {
             	if (isLeaf(vptr[i])) {
-            		Node* dataNode = readNode(this->index_path.c_str(), vchildren[i]);
+            		Node* dataNode = readNode(this->index_path.c_str(), vchildren[vIndex[i]]);
             		treeSearch(query, dataNode);
             		delete dataNode;
             	} else {
@@ -871,9 +885,10 @@ void BallTree::readData(ifstream & in, int n) {
 	int d;
 	in.read((char* ) &d, sizeof(int));
     int totalSize = sizeof(int) * 2 + sizeof(float) * (1 + d + N0 * (d + 1));
-    char * buffer = new char[totalSize * n - sizeof(int)];
-    in.read((char *) buffer, totalSize * n - sizeof(int));
-    delete buffer;
+    // char * buffer = new char[totalSize * n - sizeof(int)];
+    // in.read((char *) buffer, totalSize * n - sizeof(int));
+    // delete buffer;
+    in.seekg(in.tellg() + totalSize * n - sizeof(int));
 }
 
 void BallTree::readNodeTest(const char * index_path, const Rid & rid) {
