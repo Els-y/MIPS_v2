@@ -10,10 +10,31 @@ using std::endl;
 
 #ifdef MNIST
 char dataset[L] = "Mnist";
-int n = 60000, d = 50;
+
+// test search 1
+int n = 600, d = 50, delete_n = 0, insert_n = 0;
+
+// test search 2
+// int n = 60000, d = 50, delete_n = 0, insert_n = 0;
+
+// test insert 1
+// int n = 600, d = 50, delete_n = 0, insert_n = 1400;
+
+// test insert 2
+// int n = 600, d = 50, delete_n = 0, insert_n = 59400;
+
+// test delete 1
+// int n = 3000, d = 50, delete_n = 2000, insert_n = 0;
+
+// test delete 2
+// int n = 10000, d = 50, delete_n = 9400, insert_n = 0;
+
+// test insert & delete
+// int n = 600, d = 50, delete_n = 1400, insert_n = 1400
+
 int qn = 1000;
 
-int delete_n = 100, insert_n = 100;
+// int delete_n = 0, insert_n = 0;
 
 #endif
 
@@ -45,8 +66,10 @@ int main() {
     }
 
     BallTree ball_tree1;
+
     ball_tree1.buildTree(n, d, data);
-//    ball_tree1.buildQuadTree(n, d, data);
+    // ball_tree1.buildQuadTree(n, d, data);
+
     ball_tree1.storeTree(index_path);
 
     if (!read_data(qn, d, query, query_path)) {
@@ -63,41 +86,42 @@ int main() {
     ball_tree2.restoreTree(index_path);
 
     /*
-        Test Delete
-     */
-//    char delete_path[L];
-//    float** delete_data;
-//
-//    sprintf(delete_path, "%s/delete_src/deleteData.txt", dataset);
-//    read_data_with_id(delete_n, d, delete_data, delete_path);
-//
-//    cout << "Deleting..." << endl;
-//    for (int i = 0; i < delete_n; i++) {
-//        ball_tree2.deleteData(d, delete_data[i]);
-//    }
-//    cout << "Delete Success!" << endl;
-//
-//    /*
-//        Test Insert
-//   //   */
-//    char insert_path[L];
-//    float** insert_data; // index 0 is ID
-//
-//    sprintf(insert_path, "%s/insert_src/insertData.txt", dataset);
-//    read_data_with_id(insert_n, d, insert_data, insert_path);
-//
-//    cout << "Inserting..." << endl;
-//    for (int i = 0; i < insert_n; i++) {
-//        // cout << "insert " << insert_data[i][0] << endl;
-//        ball_tree2.insertData(d, insert_data[i]);
-//    }
-//    cout << "Insert Success!" << endl;
+        Test Insert
+    */
+    // char insert_path[L];
+    // float** insert_data; // index 0 is ID
+
+    // sprintf(insert_path, "%s/insert_src/insertData.txt", dataset);
+    // read_data_with_id(insert_n, d, insert_data, insert_path);
+
+    // cout << "Inserting..." << endl;
+    // for (int i = 0; i < insert_n; i++) {
+    //     cout << "insert " << insert_data[i][0] << " success" << endl;
+    //     ball_tree2.insertData(d, insert_data[i]);
+    // }
+    // cout << "Insert Success!" << endl;
     // -----------------------
+
+    /*
+        Test Delete
+    */
+    // char delete_path[L];
+    // float** delete_data;
+
+    // sprintf(delete_path, "%s/delete_src/deleteData.txt", dataset);
+    // read_data_with_id(delete_n, d, delete_data, delete_path);
+
+    // cout << "Deleting..." << endl;
+    // for (int i = 0; i < delete_n; i++) {
+    //     ball_tree2.deleteData(d, delete_data[i]);
+    // }
+    // cout << "Delete Success!" << endl;
+
+    // ball_tree2.restoreTree(index_path);
 
     /*
         Query
      */
-
     cout << "MIP Searching..." << endl;
     for (int i = 0; i < qn; i++) {
         int index = ball_tree2.mipSearch(d, query[i]);
@@ -114,34 +138,5 @@ int main() {
         delete[] query[i];
     }
 
-    
-    /*
-     * Test Query
-     */
-//    char queryTest_path[L], outputTest_path[L];
-//    sprintf(queryTest_path, "%s/src/query.txt", dataset);
-//    sprintf(outputTest_path, "%s/dst/testAnswer.txt", dataset);
-//    float** queryTest = nullptr;
-//    if(!read_data(qn, d, queryTest, queryTest_path));
-//    FILE* test_fout = fopen(outputTest_path, "w");
-//    if (!test_fout) {
-//        printf("can't open %s!\n", outputTest_path);
-//        return 1;
-//    }
-//    for (int j = 0; j < qn; ++j) {
-//        int testIndex = ball_tree1.testQuery(n, d, data, queryTest[j]);
-//        fprintf(test_fout, "%d\n", testIndex);
-//    }
-//    fclose(test_fout);
-//
-//    for (int k = 0; k < qn; ++k) {
-//        delete[] queryTest[k];
-//    }
-
-    /*
-        Test getFreeRid
-     */
-    // Rid freeRid = ball_tree2.getFreeRidForData(index_path);
-    // cout << freeRid.page << ' ' << freeRid.slot << endl; 
     return 0;
 }

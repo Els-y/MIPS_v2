@@ -10,6 +10,7 @@
 #include <cfloat>
 #include <algorithm>
 #include <cstring>
+#include <iostream>
 using namespace std;
 
 BallTree::BallTree() {
@@ -29,65 +30,6 @@ void BallTree::clearTree(Node* root) {
         delete root;
     }
 }
-
-// ----- test -----
-#include <iostream>
-using std::cout;
-using std::endl;
-using std::string;
-
-void BallTree::test() {
-    innerTest(root, 0, 0);
-}
-
-void BallTree::innerTest(Node* ptr, int flag, int depth) {
-    string space = string(depth * 4, ' ');
-
-    if (ptr != NULL) {
-
-//      list<vector<float> > & data = ptr->getData();
-//
-//      if (flag == 0) {
-//          cout << depth << " root " << "(" << data.size() << ")" << endl;
-//      } else {
-//          cout << space << depth << " " << flag << " (" << data.size() << ")" << endl;
-//      }
-
-        // ----
-        if (flag == 0) {
-            cout << depth << " root" << endl;
-        } else {
-            cout << space << depth << " " << flag << endl;
-        }
-
-        cout << space << "radius: " << ptr->getRadius() << endl;
-        cout << space << "center: " << endl;
-        vector<float> center = ptr->getCenter();
-        for (auto x: center) {
-            cout << x << " ";
-        }
-        cout << endl;
-
-        list<vector<float> > & data = ptr->getData();
-        cout << space << "dataSize: " << data.size() << endl;
-        for (auto v: data) {
-            cout << space;
-            for (auto x: v) {
-                cout << x << " ";
-            }
-            cout << endl;
-        }
-
-        vector<Node*> childPtr = ptr->getPtr();
-        cout << space << "childPtr size: " << childPtr.size() << endl;
-        if (!childPtr.empty()) {
-            for (int i = 0; i < childPtr.size(); ++i) {
-                innerTest(childPtr[i], i + 1, depth + 1);
-            }
-        }
-    }
-}
-// ----------------
 
 int BallTree::getDimension() const {
     return dimension;
@@ -331,60 +273,6 @@ void BallTree::treeSearch(Query& query, Node* root) {
     }
 }
 
-//void BallTree::testRestoreTree(int n, int d, float** data, float* query) {
-//    list<vector<float>> v_data = transform(n, d, data);
-//    list<vector<float>> tree_data;
-//    readDataFromTree(tree_data, root);
-//
-//    vector<float> v_query;
-//    v_query.insert(v_query.end(), query, query + d);
-//    int id = 0;
-//    float maxInnerProduct = 0;
-//    for (auto each : tree_data) {
-//        float dist = getDistance(each, v_query);
-//        if (dist > maxInnerProduct) {
-//            id = (int)each[0];
-//            maxInnerProduct = dist;
-//        }
-//    }
-//}
-
-//void BallTree::readDataFromTree(list<vector<float>> & data, Node* root) {
-//    if(isLeaf(root)) {
-//        for (auto each : root->getData()) {
-//            data.push_back(each);
-//        }
-//    } else{
-//        vector<Rid> child = root->getChildren();
-//        vector<Node*> ptr;
-//        for (auto each : child) {
-//            ptr.push_back(readNode(this->index_path.c_str(), each));
-//        }
-//        for (auto each : ptr) {
-//            readDataFromTree(data, each);
-//        }
-//    }
-//}
-//int BallTree::testQuery(int n,
-//              int d,
-//              float** data, float* query) {
-//
-//    list<vector<float> > listData = transform(n, d, data);
-//    vector<float> v_query(1, 0);
-//    v_query.insert(v_query.end(), query, query + d);
-//
-//    int id = 0;
-//    float maxInnerProduct = 0;
-//    for (auto each : listData) {
-//        float dist = getDistance(each, v_query);
-//        if (dist > maxInnerProduct) {
-//            id = (int)each[0];
-//            maxInnerProduct = dist;
-//        }
-//    }
-//    return id;
-//}
-
 // query has no id!!
 int BallTree::mipSearch(int d, float* query) {
     vector<float> v(1, -1);
@@ -406,56 +294,6 @@ bool BallTree::buildQuadTree(
     root = makeBallTree(listData);
 
     return true;
-}
-
-
-// Node
-void Node::setRid(const Rid & r) {
-    rid = r;
-}
-
-Rid Node::getRid() const {
-    return rid;
-}
-
-float Node::getRadius() const {
-    return radius;
-}
-
-void Node::setRadius(const float & r) {
-    radius = r;
-}
-
-vector<float> & Node::getCenter() {
-    return center;
-}
-
-void Node::setCenter(const vector<float> & v) {
-    center = v;
-}
-
-list<vector<float> > & Node::getData() {
-    return data;
-}
-
-vector<Rid> & Node::getChildren() {
-    return child;
-}
-
-vector<Node *> & Node::getPtr() {
-    return ptr;
-}
-
-bool Node::isData() {
-    return type == 1;
-}
-
-bool Node::isIndex() {
-    return type == 0;
-}
-
-void Node::setType(int t) {
-    type = t;
 }
 
 bool BallTree::storeTree(const char* index_path) {
@@ -482,7 +320,7 @@ void BallTree::setRid(Node* root) {
 
     // how many records one page can hold
     int numberOfIndex = calcSlotNumberOfIndex(n, d);
-    int numberOfData = calcSlotNumberOfData(20, d);
+    int numberOfData = calcSlotNumberOfData(N0, d);
 
     int indexPid = 0, indexSid = 0, dataPid = 1000, dataSid = 0;
 
@@ -550,7 +388,7 @@ void BallTree::storeInFile(const char* index_path, Node* root) {
 
     // how many records one page can hold
     int numberOfIndex = calcSlotNumberOfIndex(n, d);
-    int numberOfData = calcSlotNumberOfData(20, d);
+    int numberOfData = calcSlotNumberOfData(N0, d);
 
     int iPid = 0, iSid = 0, dPid = 1000, dSid = 0;
     createNewPage(index_path, iPid);
@@ -632,7 +470,7 @@ void BallTree::appendInvalidSlots(const char* path, int slotSize, int slotNumber
 
         out.write((char*)&d, sizeof(int));
         out.write((char*)&tempn, sizeof(int));
-        
+
         out.write(temp, sizeof(temp));
     }
     out.close();
@@ -640,7 +478,7 @@ void BallTree::appendInvalidSlots(const char* path, int slotSize, int slotNumber
 
 void BallTree::storeDataNode(ofstream& out, Node& node) {
     int d = node.getCenter().size() - 1,
-        n = node.getData().size();
+            n = node.getData().size();
     // dimension
     out.write((char* ) &d, sizeof(int));
     // n cha
@@ -667,7 +505,7 @@ void BallTree::storeDataNode(ofstream& out, Node& node) {
     }
 
     // Fill the unused data place
-    for (int i = 0; i < 20 - n; i++) {
+    for (int i = 0; i < N0 - n; i++) {
         vector<float> invalidData(d + 1, 0);
         invalidData[0] = -1; // Invalid data ID
         for (int i = 0; i < invalidData.size(); i++) {
@@ -707,6 +545,7 @@ bool BallTree::writeSlotInfo(const char * path, int slotSize, int occupySize) {
     for (int i = 0; i < slotSize - occupySize; i++) {
         out.write(&ch2, sizeof(char));
     }
+    out.close();
     return true;
 }
 
@@ -729,9 +568,12 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
     retNode->setRid(rid);
 
     if (rid.page < 1000) {  // Index Node
-        for (int i = 0; i < rid.slot; i++) {
-            readIndex(in);
-        }
+        // for (int i = 0; i < rid.slot; i++) {
+        //     readIndex(in);
+        // }
+
+        readIndex(in, rid.slot);
+
         int d, n, tmp1, tmp2;
         in.read((char *) &d, sizeof(int));
         in.read((char *) &n, sizeof(int));
@@ -758,8 +600,7 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
 
         retNode->setType(0);
     } else {    // Data Node
-        for (int i = 0; i < rid.slot; i++)
-            readData(in);
+        readData(in, rid.slot);
 
         int d, n, tmp;
         in.read((char *) &d, sizeof(int));
@@ -789,59 +630,27 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
 
         retNode->setType(1);
     }
+
+    in.close();
     return retNode;
 }
 
-// Skip the size of Index in ifstream
-void BallTree::readIndex(ifstream & in) {
-    int d, n, tmp;
-    in.read((char *) &d, sizeof(int));
-    in.read((char *) &n, sizeof(int));
+void BallTree::readIndex(ifstream& in, int num) {
+    int d, n;
+    in.read((char*) &d, sizeof(int));
+    in.read((char*) &n, sizeof(int));
 
-    for (int i = 0; i < 2 * n; i++){
-        in.read((char *) &tmp, sizeof(int));
-    }
-
-    float tmpf;
-
-    for (int i = 0; i < 1 + d; i++)
-        in.read((char *) &tmpf, sizeof(float));
+    int totalSize = sizeof(int) * (2 + n * 2) + sizeof(float) * (1 + d);
+    in.seekg((int)in.tellg() + totalSize * num - sizeof(int) * 2);
 }
 
 // Skip the size of Data in ifstream
-void BallTree::readData(ifstream & in) {
-    int d, n, tmp;
-    in.read((char *) &d, sizeof(int));
-    in.read((char *) &n, sizeof(int));
-    float tmpf;
-    for (int i = 0; i < (1 + d + 20 * (d + 1)); i++)
-        in.read((char *) &tmpf, sizeof(float));
+void BallTree::readData(ifstream & in, int n) {
+    int d;
+    in.read((char* ) &d, sizeof(int));
+    int totalSize = sizeof(int) * 2 + sizeof(float) * (1 + d + N0 * (d + 1));
+    in.seekg((int)in.tellg() + totalSize * n - sizeof(int));
 }
-
-void BallTree::readNodeTest(const char * index_path, const Rid & rid) {
-    Node* node = readNode(index_path, rid);
-
-    cout << "center:" << endl;
-    for (auto x: node->getCenter()) {
-        cout << x << " ";
-    }
-    cout << endl;
-
-    cout << "data:" << endl;
-    for (auto v: node->getData()) {
-        for (auto x: v) {
-            cout << x << " ";
-        }
-        cout << endl;
-    }
-    cout << endl;
-}
-
-
-// void BallTree::test_insert(int d, float* data) {
-//     cout << getDataNum(root) << endl;
-// }
-
 
 Rid BallTree::getFreeRid(const char * index_path, int pid) {
     char path[64];
@@ -850,7 +659,7 @@ Rid BallTree::getFreeRid(const char * index_path, int pid) {
         sprintf(path, "%s/%d", index_path, pid);
 
         string slotValidMap = getSlotValidMap(index_path, pid);
-        // cout << slotValidMap << endl;
+
         if (slotValidMap == "NULL") {
             return Rid(pid, -1);
         }
@@ -880,7 +689,7 @@ string BallTree::getSlotValidMap(const char* index_path, int pid) {
 
     ifstream in;
     in.open(path, ios::in | ios::binary);
-    
+
     if (in.fail()) {
         return "NULL";
     }
@@ -895,9 +704,9 @@ string BallTree::getSlotValidMap(const char* index_path, int pid) {
         slotSize = getDataSlotSize(d);
     }
 
-    in.seekg(0, in.end); 
+    in.seekg(0, in.end);
     int pageLength = in.tellg();
-    
+
     int mapLength = pageLength - slotSize * slotNumber;
 
     char* map = new char[mapLength];
@@ -968,8 +777,18 @@ void BallTree::setNewIndexNodesRid(Node* node) {
 
 }
 
-
 // optional
+void BallTree::updateNodeRadius(Node* node, vector<float> data) {
+    float radius = node->getRadius();
+    vector<float> center = node->getCenter();
+    float dist = getDistance(center, data);
+
+    if (dist > radius) {
+        node->setRadius(dist);
+    }
+}
+
+
 bool BallTree::insertData(int d, float* data) {
     vector<float> vec_data(data, data + d + 1);
     insertDataToIndexNode(root, vec_data);
@@ -977,6 +796,8 @@ bool BallTree::insertData(int d, float* data) {
 }
 
 void BallTree::insertDataToIndexNode(Node* indexNode, vector<float>& data) {
+    updateNodeRadius(indexNode, data);
+
     vector<Rid> children = indexNode->getChildren();
 
     float minDist = FLT_MAX;
@@ -1000,6 +821,8 @@ void BallTree::insertDataToIndexNode(Node* indexNode, vector<float>& data) {
     } else {
         insertDataToDataNode(indexNode, minChild, data);
     }
+
+    delete minChild;
 }
 
 int BallTree::getDataNum(Node* node) {
@@ -1011,14 +834,18 @@ int BallTree::getDataNum(Node* node) {
     int totalNum = 0;
     vector<Rid> children = node->getChildren();
     for (int i = 0; i < children.size(); i++) {
-        int temp = getDataNum(readNode(this->index_path.c_str(), children[i]));
+        Node* tempNode = readNode(this->index_path.c_str(), children[i]);
+        int temp = getDataNum(tempNode);
 
         totalNum += temp;
+        delete tempNode;
     }
     return totalNum;
 }
 
 void BallTree::insertDataToDataNode(Node* fatherNode, Node* dataNode, vector<float>& data) {
+    updateNodeRadius(dataNode, data);
+
     list<vector<float> > & dataList = dataNode->getData();
 
     if (dataList.size() < N0) {
@@ -1047,7 +874,7 @@ void BallTree::splitDataNode(Node* fatherNode, Node* dataNode, vector<float>& da
             break;
         }
     }
-    // delete old data node
+    // delete old current data node
     updateSlot(false, dataNode);
 
     // update father node
@@ -1074,7 +901,7 @@ void BallTree::updateSlot(bool valid, Node* node) {
 
     ofstream out;
     out.open(path, ios::in | ios::out | ios::binary);
-    
+
     out.seekp(slotSize * rid.slot);
 
     if (valid) {
@@ -1092,7 +919,7 @@ void BallTree::updateSlot(bool valid, Node* node) {
 
 void BallTree::storeIndexNode(ofstream& out, Node& node) {
     int d = node.getCenter().size() - 1,
-        n = dimension;
+            n = node.getChildren().size();
 
     out.write((char* ) &d, sizeof(int));
     // n cha
@@ -1131,8 +958,6 @@ void BallTree::updateSlotInfo(bool valid, Node* node) {
     out.close();
 }
 
-
-
 int BallTree::getSlotSize(Node* node) {
     int n, d;
     int slotSize, slotNumber;
@@ -1140,13 +965,12 @@ int BallTree::getSlotSize(Node* node) {
     d = node->getCenter().size() - 1;
     if (node->isData()) {
         // Data Node
-        return getDataSlotSize(d);    
+        return getDataSlotSize(d);
     } else {
         // Index Node
         n = dimension;
         return getIndexSlotSize(n, d);
     }
-    
 }
 
 int BallTree::getSlotNumber(Node* node) {
@@ -1157,7 +981,7 @@ int BallTree::getSlotNumber(Node* node) {
 
     if (node->isData()) {
         // Data Node
-        n = node->getData().size();    
+        n = node->getData().size();
         return calcSlotNumberOfData(n, d);
     } else {
         // Index Node
@@ -1179,10 +1003,9 @@ bool BallTree::deleteDataFromIndexNode(Node* father, Node* node, vector<float>& 
     float minDist = FLT_MAX;
     Node* minChild = NULL;
 
-    vector<Node*> otherChild;
-
     for (int i = 0; i < children.size(); i++) {
         Node* childNode = readNode(this->index_path.c_str(), children[i]);
+
         if (childNode->isIndex()) {
             deleteDataFromIndexNode(node, childNode, data);
         } else {
@@ -1190,7 +1013,7 @@ bool BallTree::deleteDataFromIndexNode(Node* father, Node* node, vector<float>& 
         }
     }
 
-    return false;
+    return true;
 }
 
 bool BallTree::deleteDataFromDataNode(Node* grandfather, Node* father, Node* node, vector<float>& data) {
@@ -1204,6 +1027,7 @@ bool BallTree::deleteDataFromDataNode(Node* grandfather, Node* father, Node* nod
             if (getDataNum(father) <= N0) {
                 mergeIndexNode(grandfather, father);
             }
+            cout << "delete data " << data[0] << " success" << endl;
             return true;
         }
     }
@@ -1237,8 +1061,10 @@ void BallTree::mergeIndexNode(Node* father, Node* node) {
     node->setType(1);
 
     Rid oldRid = node->getRid();
+
     // store the converted data node to data page
     node->setRid(getFreeRidForData(this->index_path.c_str()));
+
     updateSlot(true, node);
 
     // update father's child
@@ -1249,4 +1075,53 @@ void BallTree::mergeIndexNode(Node* father, Node* node) {
         }
     }
     updateSlot(true, father);
+}
+
+// Node
+void Node::setRid(const Rid & r) {
+    rid = r;
+}
+
+Rid Node::getRid() const {
+    return rid;
+}
+
+float Node::getRadius() const {
+    return radius;
+}
+
+void Node::setRadius(const float & r) {
+    radius = r;
+}
+
+vector<float> & Node::getCenter() {
+    return center;
+}
+
+void Node::setCenter(const vector<float> & v) {
+    center = v;
+}
+
+list<vector<float> > & Node::getData() {
+    return data;
+}
+
+vector<Rid> & Node::getChildren() {
+    return child;
+}
+
+vector<Node *> & Node::getPtr() {
+    return ptr;
+}
+
+bool Node::isData() {
+    return type == 1;
+}
+
+bool Node::isIndex() {
+    return type == 0;
+}
+
+void Node::setType(int t) {
+    type = t;
 }
