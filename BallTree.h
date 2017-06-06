@@ -192,6 +192,9 @@ private:
 
     void treeSearch(Query& query, Node* root);
 
+    float getInnerProduct(const vector<float> & pointA,
+                          const vector<float> & pointB);
+
 public:
     BallTree();
     ~BallTree();

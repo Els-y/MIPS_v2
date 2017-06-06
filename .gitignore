@@ -12,3 +12,4 @@ CTestTestfile.cmake
 /Netflix/index
 /Netflix/dst
 *.gch
+BallTree

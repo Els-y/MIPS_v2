@@ -275,7 +275,7 @@ bool BallTree::restoreTree(
 }
 
 float BallTree::getMIP(Query& q, Node* T) {
-    return getDistance(q.getData(), T->getCenter())
+    return getInnerProduct(q.getData(), T->getCenter())
            + T->getRadius() * getNorm(q.getData());
 }
 
@@ -290,12 +290,24 @@ bool BallTree::isLeaf(Node* T) {
 
 void BallTree::linearSearch(Query& query, const list<vector<float> > & S) {
     for (auto each : S) {
-        float dis = getDistance(query.getData(), each);
-        if(dis > query.getMaxInnerProduct()) {
+        float dis = getInnerProduct(query.getData(), each);
+        if(dis >= query.getMaxInnerProduct()) {
             query.setBM(int(each[0]));
             query.setMaxInnerProduct(dis);
         }
     }
+}
+
+float BallTree::getInnerProduct(const vector<float> & pointA,
+                                const vector<float> & pointB) {
+    float sum = 0;
+    int length = (int)pointA.size();
+
+    for (int i = 1; i < length; ++i) {
+        sum += pointA[i] * pointB[i];
+    }
+
+    return sum;
 }
 
 void BallTree::treeSearch(Query& query, Node* root) {
@@ -313,6 +325,7 @@ void BallTree::treeSearch(Query& query, Node* root) {
             });
             for (auto each : ptr) {
                 treeSearch(query, each);
+                delete each;
             }
         }
     }
