@@ -123,7 +123,9 @@ private:
 
     void clearTree(Node* root);
 
-    // storeTree
+    // store and read a tree
+    Node* readDataNodeWithoutData(const char * index_path, const Rid & rid);
+
     Node* readNode(const char * index_path, const Rid & rid);
 
     bool storeNode(const char * index_path, Node & node);
@@ -140,9 +142,11 @@ private:
 
     void createNewPage(const char* index_path, int pid);
 
-    void readIndex(ifstream & in);
+    void readIndex(ifstream & in, int n);
 
-    void readData(ifstream & in);
+    // void readIndex(ifstream & in);
+
+    void readData(ifstream & in, int n);
 
     void storeIndexNode(const char* path, int offset, Node* node);
 
@@ -157,6 +161,8 @@ private:
     string getSlotValidMap(const char* index_path, int pid);
 
     // Insert & Delete
+    void updateNodeRadius(Node* node, vector<float> data);
+
     void insertDataToIndexNode(Node* indexNode, vector<float>& data);
 
     void insertDataToDataNode(Node* fatherNode, Node* dataNode, vector<float>& data);
@@ -192,6 +198,9 @@ private:
 
     void treeSearch(Query& query, Node* root);
 
+    float getInnerProduct(const vector<float> & pointA,
+                          const vector<float> & pointB);
+
 public:
     BallTree();
     ~BallTree();
@@ -217,39 +226,24 @@ public:
             int d,
             float* query);
 
-    /*
-     * To test query.
-     */
-//    void testRestoreTree(int n, int d, float** data, float* query);
-//    void readDataFromTree(list<vector<float>> & data, Node* root);
-//    int testQuery(int n, int d, float** data, float* query);
-
     // optional
     bool insertData(
-    	int d,
-    	float* data);
-
-// void test_insert(int d, float* data);
+            int d,
+            float* data);
 
     // optional
     bool deleteData(
-    	int d,
-    	float* data);
+            int d,
+            float* data);
 
     // optional
     bool buildQuadTree(
             int n,
             int d,
             float** data);
-
-    // test function
-    // buildTree
-    void test();
-    void innerTest(Node* ptr, int flag, int depth);
-
-    // storeTree
-    void readNodeTest(const char * index_path, const Rid & rid);
-
 };
 
 #endif
+
+
+
