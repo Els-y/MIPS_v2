@@ -207,13 +207,63 @@ int BallTree::findNeastIndex(const vector<float> & pointX, const vector<vector<f
     return index;
 }
 
-bool BallTree::restoreTree(
-        const char* index_path) {
+// restore the whole tree except the data in the origin tree
+bool BallTree::restoreTree(const char* index_path) {
     this->index_path = index_path;
     root = readNode(index_path, Rid(0, 0));
     dimension = root->getChildren().size();
-    // cout << "restore:" << dimension << endl;
+
+    // restore tree without data
+    queue<Node*> que;
+    que.push(root);
+    while (!que.empty()) {
+        Node* tmp = que.front();
+        que.pop();
+
+        std::vector<Rid>& vRid = tmp->getChildren();
+        for (auto rid : vRid) {
+            if (rid.page < 1000) { // index node
+                Node* tmpIndex = readNode(index_path, rid);
+                tmp->getPtr().push_back(tmpIndex);
+                que.push(tmpIndex);
+            } else {
+                tmp->getPtr().push_back(readDataNodeWithoutData(index_path, rid));
+            }
+        }
+    }
     return root != nullptr;
+}
+
+Node* BallTree::readDataNodeWithoutData(const char * index_path, const Rid & rid) {
+    char path[64];
+    sprintf(path, "%s/%d", index_path, rid.page);
+    ifstream in;
+    in.open(path, ios::in|ios::binary);
+
+    Node* retNode = new Node();
+    retNode->setRid(rid);
+
+    readData(in, rid.slot);
+
+    int d, n, tmp;
+    in.read((char *) &d, sizeof(int));
+    in.read((char *) &n, sizeof(int));
+
+    float tmpf;
+    // radius
+    in.read((char *) &tmpf, sizeof(float));
+    retNode->setRadius(tmpf);
+
+    // center
+    retNode->getCenter().push_back((float)-1);
+    for (int i = 0; i < d; i++) {
+        in.read((char *) &tmpf, sizeof(float));
+        retNode->getCenter().push_back(tmpf);
+    }
+
+    retNode->setType(1);
+    in.close();
+    return retNode;
 }
 
 float BallTree::getMIP(Query& q, Node* T) {
@@ -252,22 +302,37 @@ float BallTree::getInnerProduct(const vector<float> & pointA,
     return sum;
 }
 
+
 void BallTree::treeSearch(Query& query, Node* root) {
     if (query.getMaxInnerProduct() < getMIP(query, root)) {
         if(isLeaf(root)) {
             this->linearSearch(query, root->getData());
         } else {
-            vector<Rid> child = root->getChildren();
-            vector<Node*> ptr;
-            for (auto each : child) {
-                ptr.push_back(readNode(this->index_path.c_str(), each));
-            }
-            sort(ptr.begin(), ptr.end(), [&](Node* a, Node* b) {
+            // 保证vchildren中Rid的顺序和vptr中Node*的顺序一致，即对应同一个Node.
+            // 利用vIndex记录得到排序后的vptr在原来root->getPtr()数组，
+            // 也即children数组的位置
+            std::vector<Rid>& vchildren = root->getChildren();
+            std::vector<Node* > vptr = root->getPtr();
+            sort(vptr.begin(), vptr.end(), [&](Node* a, Node* b) {
                 return getMIP(query, a) > getMIP(query, b);
             });
-            for (auto each : ptr) {
-                treeSearch(query, each);
-                delete each;
+            std::vector<int> vIndex;
+            for (int i = 0; i < vptr.size(); i++) {
+                for (int j = 0; j < vptr.size(); j++) {
+                    if (vptr[i] == root->getPtr()[j]) {
+                        vIndex.push_back(j);
+                        break;
+                    }
+                }
+            }
+            for (int i = 0; i < vptr.size(); i++) {
+                if (isLeaf(vptr[i])) {
+                    Node* dataNode = readNode(this->index_path.c_str(), vchildren[vIndex[i]]);
+                    treeSearch(query, dataNode);
+                    delete dataNode;
+                } else {
+                    treeSearch(query, vptr[i]);
+                }
             }
         }
     }
