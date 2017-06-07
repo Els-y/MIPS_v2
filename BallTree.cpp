@@ -557,7 +557,6 @@ void BallTree::createNewPage(const char* index_path, int pid) {
     out.close();
 }
 
-
 Node* BallTree::readNode(const char * index_path, const Rid & rid) {
     char path[64];
     sprintf(path, "%s/%d", index_path, rid.page);
@@ -568,10 +567,6 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
     retNode->setRid(rid);
 
     if (rid.page < 1000) {  // Index Node
-        // for (int i = 0; i < rid.slot; i++) {
-        //     readIndex(in);
-        // }
-
         readIndex(in, rid.slot);
 
         int d, n, tmp1, tmp2;
@@ -586,6 +581,10 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
             retNode->getChildren().push_back(child);
         }
 
+        for (int i = 0; i < dimension - n; i++) {
+            in.seekg((int)in.tellg() + sizeof(int) * 2);
+        }
+
         float tmpf;
         // radius
         in.read((char *) &tmpf, sizeof(float));
@@ -597,7 +596,6 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
             in.read((char *) &tmpf, sizeof(float));
             retNode->getCenter().push_back(tmpf);
         }
-
         retNode->setType(0);
     } else {    // Data Node
         readData(in, rid.slot);
@@ -627,7 +625,6 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
             }
             retNode->getData().push_back(v);
         }
-
         retNode->setType(1);
     }
 
@@ -636,12 +633,11 @@ Node* BallTree::readNode(const char * index_path, const Rid & rid) {
 }
 
 void BallTree::readIndex(ifstream& in, int num) {
-    int d, n;
+    int d;
     in.read((char*) &d, sizeof(int));
-    in.read((char*) &n, sizeof(int));
 
-    int totalSize = sizeof(int) * (2 + n * 2) + sizeof(float) * (1 + d);
-    in.seekg((int)in.tellg() + totalSize * num - sizeof(int) * 2);
+    int totalSize = sizeof(int) * (2 + dimension * 2) + sizeof(float) * (1 + d);
+    in.seekg((int)in.tellg() + totalSize * num - sizeof(int));
 }
 
 // Skip the size of Data in ifstream
@@ -748,36 +744,10 @@ void BallTree::createNewPage(const char* index_path, int pid, int slotNum, int s
     writeSlotInfo(path, slotNum, 0);
 }
 
-void BallTree::setNewIndexNodesRid(Node* node) {
-    Rid newIndexRid = getFreeRidForIndex(this->index_path.c_str());
-
-    while (newIndexRid.slot == -1) {
-        createNewPage(this->index_path.c_str(), newIndexRid.page, getSlotNumber(node), getSlotSize(node));
-        newIndexRid = getFreeRidForIndex(this->index_path.c_str());
-    }
-
-    node->setRid(newIndexRid);
-    updateSlotInfo(true, node);
-
-    vector<Node*> & ptr = node->getPtr();
-    vector<Rid> & children = node->getChildren();
-
-    for (int i = 0; i < ptr.size(); i++) {
-        Rid newDataRid = getFreeRidForData(this->index_path.c_str());
-        while (newDataRid.slot == -1) {
-            createNewPage(this->index_path.c_str(), newDataRid.page, getSlotNumber(ptr[i]), getSlotSize(ptr[i]));
-            newDataRid = getFreeRidForData(this->index_path.c_str());
-        }
-
-        ptr[i]->setRid(newDataRid);
-        children.push_back(newDataRid);
-
-        updateSlotInfo(true, ptr[i]);
-    }
-
-}
-
 // optional
+
+// If the distance between data and node's center is bigger than node's radius,
+// set its radius to this distance
 void BallTree::updateNodeRadius(Node* node, vector<float> data) {
     float radius = node->getRadius();
     vector<float> center = node->getCenter();
@@ -795,36 +765,44 @@ bool BallTree::insertData(int d, float* data) {
     return true;
 }
 
+// Recursively insert the data to index node
 void BallTree::insertDataToIndexNode(Node* indexNode, vector<float>& data) {
     updateNodeRadius(indexNode, data);
 
     vector<Rid> children = indexNode->getChildren();
 
     float minDist = FLT_MAX;
-    Node* minChild;
+    Node* targetChild;
 
     for (int i = 0; i < children.size(); i++) {
         Node* childNode = readNode(this->index_path.c_str(), children[i]);
 
         float dist = getDistance(childNode->getCenter(), data);
 
+        // if (dist < childNode->getRadius()) {
+        //     targetChild = childNode;
+        //     break;
+        // }
+
         if (dist < minDist) {
             minDist = dist;
-            minChild = childNode;
+            targetChild = childNode;
         } else {
             delete childNode;
         }
     }
 
-    if (minChild->isIndex()) {
-        insertDataToIndexNode(minChild, data);
+    if (targetChild->isIndex()) {
+        insertDataToIndexNode(targetChild, data);
     } else {
-        insertDataToDataNode(indexNode, minChild, data);
+        insertDataToDataNode(indexNode, targetChild, data);
     }
 
-    delete minChild;
+    delete targetChild;
 }
 
+// Calculate the total number of data in this node
+// If the node is an index, the result is the sum of the data of its children.
 int BallTree::getDataNum(Node* node) {
     if (node->isData()) {
         return node->getData().size();
@@ -843,6 +821,7 @@ int BallTree::getDataNum(Node* node) {
     return totalNum;
 }
 
+// Add the data to data node.
 void BallTree::insertDataToDataNode(Node* fatherNode, Node* dataNode, vector<float>& data) {
     updateNodeRadius(dataNode, data);
 
@@ -858,6 +837,7 @@ void BallTree::insertDataToDataNode(Node* fatherNode, Node* dataNode, vector<flo
     splitDataNode(fatherNode, dataNode, data);
 }
 
+// Split this data node to an new index node
 void BallTree::splitDataNode(Node* fatherNode, Node* dataNode, vector<float>& data) {
     list<vector<float> > newDataList = dataNode->getData();
 
@@ -888,9 +868,41 @@ void BallTree::splitDataNode(Node* fatherNode, Node* dataNode, vector<float>& da
     for (int i = 0; i < ptr.size(); i++) {
         updateSlot(true, ptr[i]);
     }
+
+    delete newIndex;
 }
 
-// valid == false, make the slot invalid
+// Set rid for the index node and its children
+void BallTree::setNewIndexNodesRid(Node* node) {
+    Rid newIndexRid = getFreeRidForIndex(this->index_path.c_str());
+
+    while (newIndexRid.slot == -1) {
+        createNewPage(this->index_path.c_str(), newIndexRid.page, getSlotNumber(node), getSlotSize(node));
+        newIndexRid = getFreeRidForIndex(this->index_path.c_str());
+    }
+
+    node->setRid(newIndexRid);
+    updateSlotInfo(true, node);
+
+    vector<Node*> & ptr = node->getPtr();
+    vector<Rid> & children = node->getChildren();
+
+    for (int i = 0; i < ptr.size(); i++) {
+        Rid newDataRid = getFreeRidForData(this->index_path.c_str());
+        while (newDataRid.slot == -1) {
+            createNewPage(this->index_path.c_str(), newDataRid.page, getSlotNumber(ptr[i]), getSlotSize(ptr[i]));
+            newDataRid = getFreeRidForData(this->index_path.c_str());
+        }
+
+        ptr[i]->setRid(newDataRid);
+        children.push_back(newDataRid);
+
+        updateSlotInfo(true, ptr[i]);
+    }
+}
+
+// valid == false, only make the slot map invalid
+// valid == true, rewrite the slot
 void BallTree::updateSlot(bool valid, Node* node) {
     Rid rid = node->getRid();
 
@@ -917,6 +929,7 @@ void BallTree::updateSlot(bool valid, Node* node) {
     updateSlotInfo(valid, node);
 }
 
+// Store the index node to its page and slot
 void BallTree::storeIndexNode(ofstream& out, Node& node) {
     int d = node.getCenter().size() - 1,
             n = node.getChildren().size();
@@ -932,6 +945,12 @@ void BallTree::storeIndexNode(ofstream& out, Node& node) {
         out.write((char* ) &(v[i].slot), sizeof(int));
     }
 
+    Rid invalidRid(-1, -1);
+    for (int i = 0; i < dimension - n; i++) {
+        out.write((char*) &invalidRid.page, sizeof(int));
+        out.write((char*) &invalidRid.slot, sizeof(int));
+    }
+
     // radius
     float r = node.getRadius();
     out.write((char* ) &r, sizeof(float));
@@ -944,6 +963,7 @@ void BallTree::storeIndexNode(ofstream& out, Node& node) {
 }
 
 // valid == false, make the slot valid '0'
+// valid == true, make the slog invalid '1'
 void BallTree::updateSlotInfo(bool valid, Node* node) {
     Rid rid = node->getRid();
     char path[64];
@@ -958,6 +978,7 @@ void BallTree::updateSlotInfo(bool valid, Node* node) {
     out.close();
 }
 
+// Get the size of the slot when this node is stored in page
 int BallTree::getSlotSize(Node* node) {
     int n, d;
     int slotSize, slotNumber;
@@ -990,32 +1011,38 @@ int BallTree::getSlotNumber(Node* node) {
     }
 }
 
-// the data has id
 bool BallTree::deleteData(int d, float* data) {
-    vector<float> vec_data(data, data + d + 1);
+    vector<float> vec_data(data, data + d + 1);  // data has id
     deleteDataFromIndexNode(NULL, root, vec_data);
     return true;
 }
 
+// Recursively find data in this index node.
+// If it's in, delete the data.
 bool BallTree::deleteDataFromIndexNode(Node* father, Node* node, vector<float>& data) {
+    bool flag = false;
     vector<Rid> children = node->getChildren();
 
     float minDist = FLT_MAX;
     Node* minChild = NULL;
 
     for (int i = 0; i < children.size(); i++) {
+        if (flag) return true;
         Node* childNode = readNode(this->index_path.c_str(), children[i]);
 
         if (childNode->isIndex()) {
-            deleteDataFromIndexNode(node, childNode, data);
+            flag = deleteDataFromIndexNode(node, childNode, data);
         } else {
-            deleteDataFromDataNode(father, node, childNode, data);
+            flag = deleteDataFromDataNode(father, node, childNode, data);
         }
+        delete childNode;
     }
-
-    return true;
+    delete minChild;
+    return false;
 }
 
+// Find data in this data node.
+// If it's in, delete the data.
 bool BallTree::deleteDataFromDataNode(Node* grandfather, Node* father, Node* node, vector<float>& data) {
     list<vector<float> > & dataList = node->getData();
 
@@ -1034,7 +1061,7 @@ bool BallTree::deleteDataFromDataNode(Node* grandfather, Node* father, Node* nod
     return false;
 }
 
-// Only change the value of the node, do not make a new node
+// Merge this index node to a new data node
 void BallTree::mergeIndexNode(Node* father, Node* node) {
     // delete this index node in index page
     updateSlot(false, node);
@@ -1052,6 +1079,7 @@ void BallTree::mergeIndexNode(Node* father, Node* node) {
         }
         // delete the data children in data page
         updateSlot(false, child);
+        delete child;
     }
 
     // convert to data node
